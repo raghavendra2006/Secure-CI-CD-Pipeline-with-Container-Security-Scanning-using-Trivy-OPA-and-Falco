@@ -21,6 +21,15 @@ LABEL maintainer="devsecops-team" \
       description="DevSecOps Demo Application" \
       version="1.0.0"
 
+# Security: Remove package managers to reduce attack surface and avoid vulnerabilities
+RUN rm -rf /usr/local/lib/node_modules/npm \
+           /usr/local/bin/npm \
+           /usr/local/bin/npx \
+           /opt/yarn-* \
+           /usr/local/bin/yarn \
+           /usr/local/bin/yarnpkg \
+           /usr/local/lib/node_modules/corepack
+
 # Security: Create non-root user
 RUN addgroup -g 10001 -S appgroup && \
     adduser -u 10001 -S appuser -G appgroup
