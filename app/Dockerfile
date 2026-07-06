@@ -22,8 +22,8 @@ LABEL maintainer="devsecops-team" \
       version="1.0.0"
 
 # Security: Create non-root user
-RUN addgroup -g 1001 -S appgroup && \
-    adduser -u 1001 -S appuser -G appgroup
+RUN addgroup -g 10001 -S appgroup && \
+    adduser -u 10001 -S appuser -G appgroup
 
 WORKDIR /app
 
