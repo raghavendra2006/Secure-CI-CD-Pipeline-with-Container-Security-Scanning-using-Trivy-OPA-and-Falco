@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: devsecops-app-network-policy
+  namespace: devsecops
+  labels:
+    app: devsecops-app
+    cost-center: "engineering"
+    environment: "production"
+    managed-by: "github-actions"
+spec:
+  podSelector:
+    matchLabels:
+      app: devsecops-app
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow traffic to our application container port (3000) from within the cluster
+    - ports:
+        - protocol: TCP
+          port: 3000

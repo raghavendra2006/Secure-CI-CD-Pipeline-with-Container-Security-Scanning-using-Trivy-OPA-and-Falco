@@ -5,6 +5,9 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+# Upgrade system packages to patch any OS-level CVEs
+RUN apk update && apk upgrade --no-cache
+
 # Copy dependency manifests first for layer caching
 COPY package.json package-lock.json* ./
 
@@ -21,14 +24,19 @@ LABEL maintainer="devsecops-team" \
       description="DevSecOps Demo Application" \
       version="1.0.0"
 
-# Security: Remove package managers to reduce attack surface and avoid vulnerabilities
-RUN rm -rf /usr/local/lib/node_modules/npm \
+# Upgrade system packages and remove development tools/package managers to lock down runtime
+RUN apk update && apk upgrade --no-cache && \
+    rm -rf /usr/local/lib/node_modules/npm \
            /usr/local/bin/npm \
            /usr/local/bin/npx \
            /opt/yarn-* \
            /usr/local/bin/yarn \
            /usr/local/bin/yarnpkg \
-           /usr/local/lib/node_modules/corepack
+           /usr/local/lib/node_modules/corepack \
+           /sbin/apk \
+           /lib/apk \
+           /var/cache/apk \
+           /etc/apk
 
 # Security: Create non-root user
 RUN addgroup -g 10001 -S appgroup && \

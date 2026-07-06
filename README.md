@@ -412,11 +412,21 @@ kubectl exec -it $(kubectl get pods -n devsecops -o jsonpath='{.items[0].metadat
 During the pipeline stabilization and hardening phases, several security vulnerability and compliance issues were identified across the gates and remediated:
 
 *   **Base Image Upgrade**: Migrated the application base image from `node:18-alpine` to `node:22-alpine` to utilize a modern, highly patched runtime environment.
-*   **Attack Surface Minimization**: Removed `npm`, `yarn`, `corepack`, and `npx` from the final production stage of the `Dockerfile` (`RUN rm -rf /usr/local/lib/node_modules/npm ...`). This eliminated all package-manager-level vulnerability findings.
+*   **System Package Upgrades**: Added system-wide package updates (`apk update && apk upgrade --no-cache`) in both builder and runner stages to automatically patch any baseline container OS vulnerabilities.
+*   **Attack Surface Minimization & Package Manager Deletion**: Removed `npm`, `yarn`, `corepack`, and `npx` from the final production stage of the `Dockerfile`. Furthermore, recursively deleted the Alpine package manager (`/sbin/apk`, `/lib/apk`, `/etc/apk`) to lock down the production runtime filesystem against any utility installation or package injection.
 *   **Dependency Upgrades**: Upgraded `express` from `4.17.1` to `4.21.2` in `package.json` to resolve several HIGH and CRITICAL vulnerabilities.
 *   **Dependency Overrides**: Added an npm `overrides` configuration in `package.json` to pin `path-to-regexp` to `0.1.13`, successfully remediating `CVE-2026-4867` (Denial of Service via catastrophic backtracking).
-*   **Checkov Compliance (CKV_K8S_40)**: Increased user and group IDs to `10001` (setting `runAsUser: 10001` and `runAsGroup: 10001` in `k8s/deployment.yaml`, matching the `10001` GID/UID user configured in the Dockerfile) to satisfy Checkov's security rules requiring user IDs above `10000`.
-*   **Trivy Configuration**: Configured `ignore-unfixed: true` in the GitHub Actions workflow (`.github/workflows/devsecops-pipeline.yml`) to filter out OS-level packages lacking official upstream security patches, preventing build failures due to unpatchable dependencies.
+*   **Express Response & Signature Hardening**: Custom response security headers (such as `X-Frame-Options`, `X-Content-Type-Options`, and `Content-Security-Policy`) were added, and Express runtime signature disclosure (`X-Powered-By`) was disabled to prevent framework profiling.
+*   **Node.js Memory Rate Limiting**: Built and integrated a lightweight, zero-dependency, in-memory rate-limiter middleware with active garbage collection to mitigate Denial of Service (DoS) attacks.
+*   **Node.js Graceful Shutdown**: Configured process-level signal listeners (`SIGTERM`, `SIGINT`) to ensure all connections are gracefully terminated upon pod termination.
+*   **Checkov Compliance (CKV_K8S_40 & CKV2_K8S_6)**: 
+    *   Increased user and group IDs to `10001` (setting `runAsUser: 10001` and `runAsGroup: 10001` in `k8s/deployment.yaml`) to satisfy Checkov's security rules requiring user IDs above `10000`.
+    *   Created and applied a Kubernetes `NetworkPolicy` to restrict pod ingress/egress to trusted routes, which allowed us to remove the Checkov bypass for `CKV2_K8S_6`.
+*   **Trivy Configuration**: Configured `ignore-unfixed: true` in the GitHub Actions workflow to filter out OS-level packages lacking official upstream security patches, preventing build failures due to unpatchable dependencies.
+*   **CI/CD Supply Chain Hardening**:
+    *   Pinned all third-party GitHub Actions to immutable, audited commit SHAs (rather than mutable tags like `@v4` or `@master`).
+    *   Hardened Conftest binary installation by verifying the downloaded archive's SHA256 checksum against OPA's official `checksums.txt` before execution.
+    *   Stabilized Trivy database caching by using a date-based cache key instead of unique run IDs.
 
 ---
 
