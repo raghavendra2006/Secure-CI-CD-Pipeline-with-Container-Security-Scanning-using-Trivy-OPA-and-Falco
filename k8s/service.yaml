@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: devsecops-app-service
+  namespace: devsecops
+  labels:
+    app: devsecops-app
+    cost-center: "engineering"
+    environment: "production"
+    managed-by: "github-actions"
+spec:
+  type: ClusterIP
+  selector:
+    app: devsecops-app
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 3000

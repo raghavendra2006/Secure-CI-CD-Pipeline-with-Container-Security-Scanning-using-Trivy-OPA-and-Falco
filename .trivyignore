@@ -1,0 +1,11 @@
+# ──────────────────────────────────────────────
+# Trivy Ignore File
+# ──────────────────────────────────────────────
+# List CVE IDs to ignore during vulnerability
+# scanning. Use sparingly and document the
+# reason for each exception.
+#
+# Format: CVE-YYYY-NNNNN
+# Example:
+#   CVE-2023-12345  # No fix available, mitigated by WAF
+# ──────────────────────────────────────────────

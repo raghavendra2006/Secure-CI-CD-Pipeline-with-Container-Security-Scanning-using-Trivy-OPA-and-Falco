@@ -1,0 +1,24 @@
+# ──────────────────────────────────────────────
+# Hadolint Configuration
+# ──────────────────────────────────────────────
+# Controls which rules Hadolint enforces when
+# linting the Dockerfile.
+# ──────────────────────────────────────────────
+
+# Failure threshold — fail on warnings and above
+failure-threshold: warning
+
+# Trusted registries for FROM instructions
+trustedRegistries:
+  - docker.io
+  - gcr.io
+  - ghcr.io
+
+# Ignored rules (use sparingly)
+ignored: []
+
+# Override rule severities
+override:
+  warning:
+    - DL3008  # Pin versions in apt-get install
+    - DL3018  # Pin versions in apk add

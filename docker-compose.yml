@@ -1,0 +1,79 @@
+# ══════════════════════════════════════════════════════════════
+# Docker Compose — Local Development & Testing
+# ══════════════════════════════════════════════════════════════
+# Use this file to run the application locally for testing
+# before pushing to the CI/CD pipeline.
+#
+# Usage:
+#   docker-compose up --build        # Build and run
+#   docker-compose down              # Stop and remove
+#   docker-compose up -d             # Run in background
+# ══════════════════════════════════════════════════════════════
+
+version: "3.9"
+
+services:
+  # ── DevSecOps Demo Application ──
+  devsecops-app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: devsecops-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - APP_VERSION=1.0.0
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/healthz', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    # Security: Run as non-root user (matches Dockerfile USER)
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    networks:
+      - devsecops-net
+
+  # ── Security Scanner (on-demand) ──
+  # Run: docker-compose run --rm trivy-scan
+  trivy-scan:
+    image: aquasec/trivy:latest
+    container_name: trivy-scanner
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - trivy-cache:/root/.cache/trivy
+    command: >
+      image
+      --severity HIGH,CRITICAL
+      --exit-code 1
+      --format json
+      --output /tmp/trivy-report.json
+      devsecops-app:latest
+    profiles:
+      - security-scan
+    networks:
+      - devsecops-net
+
+  # ── Dockerfile Linter (on-demand) ──
+  # Run: docker-compose run --rm hadolint
+  hadolint:
+    image: hadolint/hadolint:latest
+    container_name: hadolint-scanner
+    volumes:
+      - ./app/Dockerfile:/tmp/Dockerfile:ro
+    command: hadolint /tmp/Dockerfile
+    profiles:
+      - security-scan
+
+networks:
+  devsecops-net:
+    driver: bridge
+
+volumes:
+  trivy-cache:
+    driver: local

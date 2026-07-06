@@ -1,0 +1,94 @@
+# ──────────────────────────────────────────────────────────────
+# Custom Falco Rules for DevSecOps Pipeline
+# ──────────────────────────────────────────────────────────────
+# These rules detect unauthorized runtime behavior in the
+# Kubernetes cluster, specifically targeting interactive
+# shell access to running containers.
+# ──────────────────────────────────────────────────────────────
+
+# ── Rule: Detect shell execution in containers ──
+# Triggers when /bin/bash, /bin/sh, or any shell variant is
+# spawned inside a running container. This is a strong indicator
+# of unauthorized interactive access or a compromised container.
+
+- rule: Terminal Shell in DevSecOps Container
+  desc: >
+    Detects when an interactive shell (/bin/bash, /bin/sh) is spawned
+    inside a running container in the devsecops namespace. This could
+    indicate unauthorized access, debugging in production, or a
+    compromised container executing attacker commands.
+  condition: >
+    spawned_process
+    and container
+    and container.image.repository != ""
+    and (proc.name in (bash, sh, zsh, ash, csh, ksh, dash))
+    and k8s.ns.name = "devsecops"
+  output: >
+    SECURITY ALERT: Shell spawned in container
+    (user=%user.name command=%proc.cmdline pid=%proc.pid
+    container_id=%container.id container_name=%container.name
+    image=%container.image.repository namespace=%k8s.ns.name
+    pod=%k8s.pod.name parent=%proc.pname terminal=%proc.tty)
+  priority: WARNING
+  tags:
+    - container
+    - shell
+    - devsecops
+    - mitre_execution
+
+# ── Rule: Detect sensitive file access ──
+# Triggers when a container process attempts to read sensitive
+# system files like /etc/shadow or /etc/passwd.
+
+- rule: Sensitive File Access in DevSecOps Container
+  desc: >
+    Detects when a process inside a container in the devsecops
+    namespace attempts to read sensitive system files such as
+    /etc/shadow, /etc/passwd, or private keys.
+  condition: >
+    open_read
+    and container
+    and k8s.ns.name = "devsecops"
+    and (fd.name startswith /etc/shadow
+      or fd.name startswith /etc/pam.conf
+      or fd.name startswith /root/.ssh
+      or fd.name startswith /home/*/.ssh)
+  output: >
+    SECURITY ALERT: Sensitive file read in container
+    (user=%user.name command=%proc.cmdline file=%fd.name
+    container_id=%container.id container_name=%container.name
+    image=%container.image.repository namespace=%k8s.ns.name
+    pod=%k8s.pod.name)
+  priority: WARNING
+  tags:
+    - container
+    - filesystem
+    - devsecops
+    - mitre_credential_access
+
+# ── Rule: Detect outbound connections from containers ──
+# Triggers when a container in the devsecops namespace makes
+# unexpected outbound network connections (potential data exfil).
+
+- rule: Unexpected Outbound Connection from DevSecOps Container
+  desc: >
+    Detects unexpected outbound network connections from containers
+    in the devsecops namespace, which could indicate data exfiltration,
+    C2 communication, or cryptocurrency mining.
+  condition: >
+    outbound
+    and container
+    and k8s.ns.name = "devsecops"
+    and not (fd.sport in (80, 443, 53, 8080, 3000))
+  output: >
+    SECURITY ALERT: Unexpected outbound connection from container
+    (user=%user.name command=%proc.cmdline connection=%fd.name
+    container_id=%container.id container_name=%container.name
+    image=%container.image.repository namespace=%k8s.ns.name
+    pod=%k8s.pod.name destination=%fd.sip:%fd.sport)
+  priority: NOTICE
+  tags:
+    - container
+    - network
+    - devsecops
+    - mitre_exfiltration

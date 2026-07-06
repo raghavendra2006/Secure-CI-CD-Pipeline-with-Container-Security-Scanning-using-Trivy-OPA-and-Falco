@@ -1,0 +1,94 @@
+# ──────────────────────────────────────────────────────────────
+# Falco Helm Chart Values
+# ──────────────────────────────────────────────────────────────
+# Configuration for deploying Falco into the local k3d cluster.
+# Uses eBPF driver for compatibility with local environments
+# (Docker Desktop, WSL2, Minikube, k3d).
+# ──────────────────────────────────────────────────────────────
+
+# Driver configuration — use eBPF for local/cloud compatibility
+driver:
+  enabled: true
+  kind: ebpf
+
+# Falco configuration
+falco:
+  # Enable JSON output for structured logging
+  json_output: true
+  json_include_output_property: true
+
+  # Log to stdout (captured by kubectl logs)
+  log_stderr: true
+  log_syslog: false
+  log_level: info
+
+  # Priority level for alerts
+  priority: debug
+
+  # gRPC configuration
+  grpc:
+    enabled: false
+
+  grpc_output:
+    enabled: false
+
+  # HTTP output (optional — for forwarding to SIEM)
+  http_output:
+    enabled: false
+
+# Custom rules file — mounted from the custom-rules.yaml
+customRules:
+  devsecops-rules.yaml: |-
+    - rule: Terminal Shell in DevSecOps Container
+      desc: >
+        Detects when an interactive shell (/bin/bash, /bin/sh) is spawned
+        inside a running container in the devsecops namespace.
+      condition: >
+        spawned_process
+        and container
+        and container.image.repository != ""
+        and (proc.name in (bash, sh, zsh, ash, csh, ksh, dash))
+        and k8s.ns.name = "devsecops"
+      output: >
+        SECURITY ALERT: Shell spawned in container
+        (user=%user.name command=%proc.cmdline pid=%proc.pid
+        container_id=%container.id container_name=%container.name
+        image=%container.image.repository namespace=%k8s.ns.name
+        pod=%k8s.pod.name parent=%proc.pname terminal=%proc.tty)
+      priority: WARNING
+      tags: [container, shell, devsecops, mitre_execution]
+
+    - rule: Sensitive File Access in DevSecOps Container
+      desc: >
+        Detects when a process inside a container reads sensitive files.
+      condition: >
+        open_read
+        and container
+        and k8s.ns.name = "devsecops"
+        and (fd.name startswith /etc/shadow
+          or fd.name startswith /root/.ssh)
+      output: >
+        SECURITY ALERT: Sensitive file read in container
+        (user=%user.name command=%proc.cmdline file=%fd.name
+        container_id=%container.id container_name=%container.name
+        namespace=%k8s.ns.name pod=%k8s.pod.name)
+      priority: WARNING
+      tags: [container, filesystem, devsecops, mitre_credential_access]
+
+# Resource limits for Falco pods
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Tolerations for running on all nodes
+tolerations:
+  - effect: NoSchedule
+    operator: Exists
+
+# Falcosidekick for alert forwarding (optional)
+falcosidekick:
+  enabled: false

@@ -1,0 +1,37 @@
+# ── Dependencies ──
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# ── Docker ──
+docker-image.tar
+
+# ── Security Reports ──
+security-logs/
+*.log
+
+# ── Trivy ──
+.cache/trivy/
+trivy-report.json
+
+# ── Checkov ──
+checkov-report.json
+
+# ── Hadolint ──
+hadolint-report.json
+
+# ── Environment ──
+.env
+.env.local
+.env.*.local
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS ──
+.DS_Store
+Thumbs.db
