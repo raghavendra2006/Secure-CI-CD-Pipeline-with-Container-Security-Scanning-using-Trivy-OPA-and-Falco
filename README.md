@@ -242,7 +242,7 @@ git push origin main
 ### Stage 1: Dockerfile Linting (Hadolint)
 
 Hadolint parses the Dockerfile against Docker best practices:
-- ✅ Uses pinned base image (`node:18-alpine`, not `latest`)
+- ✅ Uses pinned base image (`node:22-alpine`, not `latest`)
 - ✅ Runs as non-root user (`USER appuser`)
 - ✅ Includes `HEALTHCHECK` instruction
 - ✅ Uses multi-stage build for smaller image
@@ -406,6 +406,17 @@ kubectl exec -it $(kubectl get pods -n devsecops -o jsonpath='{.items[0].metadat
 ❌ Any Red    → Pipeline blocked, must fix before merge
 ⚠️ Warning   → Non-blocking issues found, review recommended
 ```
+
+### 🛡️ Pipeline Security Remediation & Hardening History
+
+During the pipeline stabilization and hardening phases, several security vulnerability and compliance issues were identified across the gates and remediated:
+
+*   **Base Image Upgrade**: Migrated the application base image from `node:18-alpine` to `node:22-alpine` to utilize a modern, highly patched runtime environment.
+*   **Attack Surface Minimization**: Removed `npm`, `yarn`, `corepack`, and `npx` from the final production stage of the `Dockerfile` (`RUN rm -rf /usr/local/lib/node_modules/npm ...`). This eliminated all package-manager-level vulnerability findings.
+*   **Dependency Upgrades**: Upgraded `express` from `4.17.1` to `4.21.2` in `package.json` to resolve several HIGH and CRITICAL vulnerabilities.
+*   **Dependency Overrides**: Added an npm `overrides` configuration in `package.json` to pin `path-to-regexp` to `0.1.13`, successfully remediating `CVE-2026-4867` (Denial of Service via catastrophic backtracking).
+*   **Checkov Compliance (CKV_K8S_40)**: Increased user and group IDs to `10001` (setting `runAsUser: 10001` and `runAsGroup: 10001` in `k8s/deployment.yaml`, matching the `10001` GID/UID user configured in the Dockerfile) to satisfy Checkov's security rules requiring user IDs above `10000`.
+*   **Trivy Configuration**: Configured `ignore-unfixed: true` in the GitHub Actions workflow (`.github/workflows/devsecops-pipeline.yml`) to filter out OS-level packages lacking official upstream security patches, preventing build failures due to unpatchable dependencies.
 
 ---
 
