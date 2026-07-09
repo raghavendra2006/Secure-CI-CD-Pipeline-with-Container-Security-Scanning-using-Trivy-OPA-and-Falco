@@ -192,6 +192,34 @@ cd Secure-CI-CD-Pipeline-with-Container-Security-Scanning-using-Trivy-OPA-and-Fa
 
 ### 2. Run Security Tools Locally
 
+You can run the security audits locally using either native binaries or portable Docker containers (ideal for quick verification without local installations).
+
+#### Option A: Running with Docker (Recommended, No Local Installation Required)
+
+*   **Dockerfile Linting (Hadolint)**:
+    *   *Linux/macOS (Bash)*:
+        ```bash
+        docker run --rm -i hadolint/hadolint < app/Dockerfile
+        ```
+    *   *Windows (PowerShell)*:
+        ```powershell
+        Get-Content app/Dockerfile | docker run --rm -i hadolint/hadolint
+        ```
+*   **Vulnerability Scanning (Trivy)**:
+    ```bash
+    docker run --rm -v ${pwd}:/root/.cache/ aquasec/trivy image --severity HIGH,CRITICAL devsecops-app:test
+    ```
+*   **Infrastructure as Code Scanning (Checkov)**:
+    ```bash
+    docker run --rm -v ${pwd}:/tf bridgecrew/checkov -d /tf/k8s
+    ```
+*   **OPA Policy Enforcement (Conftest)**:
+    ```bash
+    docker run --rm -v ${pwd}:/project -w /project openpolicyagent/conftest test k8s/ -p policies/
+    ```
+
+#### Option B: Running with Native Installed Binaries
+
 ```bash
 # Gate 1: Lint the Dockerfile
 hadolint app/Dockerfile
